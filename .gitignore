@@ -1,0 +1,14 @@
+﻿# .vs cache directory
+.vs/
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
