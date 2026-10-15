@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using BarberiaSaasApi.Core.Domain;
 using BarberiaSaasApi.Infrastructure.Data;
+using BarberiaSaasApi.DTOs;
 
 namespace BarberiaSaasApi.Controllers
 {
@@ -18,14 +19,23 @@ namespace BarberiaSaasApi.Controllers
 
         // GET: api/barberias
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Barberia>>> GetBarberias()
+        public async Task<ActionResult<IEnumerable<BarberiaDto>>> GetBarberias()
         {
-            return await _context.Barberias.ToListAsync();
+            var barberias = await _context.Barberias
+                .Select(b => new BarberiaDto
+                {
+                    Id = b.Id,
+                    Nombre = b.Nombre,
+                    Direccion = b.Direccion
+                })
+                .ToListAsync();
+
+            return barberias;
         }
 
         // GET: api/barberias/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Barberia>> GetBarberia(int id)
+        public async Task<ActionResult<BarberiaDto>> GetBarberia(int id)
         {
             var barberia = await _context.Barberias.FindAsync(id);
 
@@ -34,17 +44,51 @@ namespace BarberiaSaasApi.Controllers
                 return NotFound();
             }
 
-            return barberia;
+            var barberiaDto = new BarberiaDto
+            {
+                Id = barberia.Id,
+                Nombre = barberia.Nombre,
+                Direccion = barberia.Direccion
+            };
+
+            return barberiaDto;
+        }
+
+        // POST: api/barberias
+        [HttpPost]
+        public async Task<ActionResult<BarberiaDto>> PostBarberia(BarberiaCreateDto createDto)
+        {
+            var barberia = new Barberia
+            {
+                Nombre = createDto.Nombre,
+                Direccion = createDto.Direccion
+            };
+
+            _context.Barberias.Add(barberia);
+            await _context.SaveChangesAsync();
+
+            var barberiaDto = new BarberiaDto
+            {
+                Id = barberia.Id,
+                Nombre = barberia.Nombre,
+                Direccion = barberia.Direccion
+            };
+
+            return CreatedAtAction(nameof(GetBarberia), new { id = barberia.Id }, barberiaDto);
         }
 
         // PUT: api/barberias/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutBarberia(int id, Barberia barberia)
+        public async Task<IActionResult> PutBarberia(int id, BarberiaCreateDto updateDto)
         {
-            if (id != barberia.Id)
+            var barberia = await _context.Barberias.FindAsync(id);
+            if (barberia == null)
             {
-                return BadRequest();
+                return NotFound();
             }
+
+            barberia.Nombre = updateDto.Nombre;
+            barberia.Direccion = updateDto.Direccion;
 
             _context.Entry(barberia).State = EntityState.Modified;
 
@@ -65,16 +109,6 @@ namespace BarberiaSaasApi.Controllers
             }
 
             return NoContent();
-        }
-
-        // POST: api/barberias
-        [HttpPost]
-        public async Task<ActionResult<Barberia>> PostBarberia(Barberia barberia)
-        {
-            _context.Barberias.Add(barberia);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetBarberia), new { id = barberia.Id }, barberia);
         }
 
         // DELETE: api/barberias/5

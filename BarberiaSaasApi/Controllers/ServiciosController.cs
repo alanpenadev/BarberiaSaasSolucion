@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using BarberiaSaasApi.Core.Domain;
 using BarberiaSaasApi.Infrastructure.Data;
+using BarberiaSaasApi.DTOs;
 
 namespace BarberiaSaasApi.Controllers
 {
@@ -18,33 +19,106 @@ namespace BarberiaSaasApi.Controllers
 
         // GET: api/servicios
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Servicio>>> GetServicios()
+        public async Task<ActionResult<IEnumerable<ServicioDto>>> GetServicios()
         {
-            return await _context.Servicios.Include(s => s.Barberia).ToListAsync();
+            var servicios = await _context.Servicios
+                .Include(s => s.Barberia)
+                .Select(s => new ServicioDto
+                {
+                    Id = s.Id,
+                    Nombre = s.Nombre,
+                    Precio = s.Precio,
+                    DuracionMinutos = s.DuracionMinutos,
+                    BarberiaId = s.BarberiaId,
+                    BarberiaNombre = s.Barberia != null ? s.Barberia.Nombre : string.Empty
+                })
+                .ToListAsync();
+
+            return servicios;
         }
 
         // GET: api/servicios/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Servicio>> GetServicio(int id)
+        public async Task<ActionResult<ServicioDto>> GetServicio(int id)
         {
-            var servicio = await _context.Servicios.Include(s => s.Barberia).FirstOrDefaultAsync(s => s.Id == id);
+            var servicio = await _context.Servicios
+                .Include(s => s.Barberia)
+                .FirstOrDefaultAsync(s => s.Id == id);
 
             if (servicio == null)
             {
                 return NotFound();
             }
 
-            return servicio;
+            var servicioDto = new ServicioDto
+            {
+                Id = servicio.Id,
+                Nombre = servicio.Nombre,
+                Precio = servicio.Precio,
+                DuracionMinutos = servicio.DuracionMinutos,
+                BarberiaId = servicio.BarberiaId,
+                BarberiaNombre = servicio.Barberia != null ? servicio.Barberia.Nombre : string.Empty
+            };
+
+            return servicioDto;
+        }
+
+        // POST: api/servicios
+        [HttpPost]
+        public async Task<ActionResult<ServicioDto>> PostServicio(ServicioCreateDto createDto)
+        {
+            var barberiaExists = await _context.Barberias.AnyAsync(b => b.Id == createDto.BarberiaId);
+            if (!barberiaExists)
+            {
+                return BadRequest("La barbería especificada no existe.");
+            }
+
+            var servicio = new Servicio
+            {
+                Nombre = createDto.Nombre,
+                Precio = createDto.Precio,
+                DuracionMinutos = createDto.DuracionMinutos,
+                BarberiaId = createDto.BarberiaId
+            };
+
+            _context.Servicios.Add(servicio);
+            await _context.SaveChangesAsync();
+
+            await _context.Entry(servicio).Reference(s => s.Barberia).LoadAsync();
+
+            var servicioDto = new ServicioDto
+            {
+                Id = servicio.Id,
+                Nombre = servicio.Nombre,
+                Precio = servicio.Precio,
+                DuracionMinutos = servicio.DuracionMinutos,
+                BarberiaId = servicio.BarberiaId,
+                BarberiaNombre = servicio.Barberia?.Nombre ?? string.Empty
+            };
+
+            return CreatedAtAction(nameof(GetServicio), new { id = servicio.Id }, servicioDto);
         }
 
         // PUT: api/servicios/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutServicio(int id, Servicio servicio)
+        public async Task<IActionResult> PutServicio(int id, ServicioCreateDto updateDto)
         {
-            if (id != servicio.Id)
+            var servicio = await _context.Servicios.FindAsync(id);
+            if (servicio == null)
             {
-                return BadRequest();
+                return NotFound();
             }
+
+            var barberiaExists = await _context.Barberias.AnyAsync(b => b.Id == updateDto.BarberiaId);
+            if (!barberiaExists)
+            {
+                return BadRequest("La barbería especificada no existe.");
+            }
+
+            servicio.Nombre = updateDto.Nombre;
+            servicio.Precio = updateDto.Precio;
+            servicio.DuracionMinutos = updateDto.DuracionMinutos;
+            servicio.BarberiaId = updateDto.BarberiaId;
 
             _context.Entry(servicio).State = EntityState.Modified;
 
@@ -65,16 +139,6 @@ namespace BarberiaSaasApi.Controllers
             }
 
             return NoContent();
-        }
-
-        // POST: api/servicios
-        [HttpPost]
-        public async Task<ActionResult<Servicio>> PostServicio(Servicio servicio)
-        {
-            _context.Servicios.Add(servicio);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetServicio), new { id = servicio.Id }, servicio);
         }
 
         // DELETE: api/servicios/5

@@ -32,7 +32,7 @@ namespace BarberiaSaasApi.Core.Domain
         public string ClienteTelefono { get; set; } = string.Empty;
 
         [Required]
-        public DateTime FechaHoraCita { get; set; }
+        public DateTime FechaHora { get; set; }
 
         [Required]
         [MaxLength(50)]
